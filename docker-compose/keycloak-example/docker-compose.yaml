@@ -1,0 +1,48 @@
+version: "3.8"
+services:
+  postgres:
+    # https://www.keycloak.org/server/db to get list of supported database versions
+    image: "postgres:15.4"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - env/postgres.env
+      - env/postgres-override.env
+    networks:
+      - keycloak
+
+  keycloak:
+    build:
+      context: .
+      args:
+        KEYCLOAK_VERSION: $KEYCLOAK_VERSION
+    command: ['start', '--optimized']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - env/keycloak.env
+      - env/keycloak-override.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`$KEYCLOAK_DOMAIN`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+    networks:
+      - keycloak
+      - proxy
+
+volumes:
+  postgres_data:
+
+networks:
+  keycloak:
+    name: keycloak
+  # Proxy network created by traefik compose
+  proxy:
+    name: proxy
+    external: true

@@ -1,8 +1,20 @@
 # How to Contribute
 
-Before you start working on a significant code change, it’s a good idea to make sure that your approach is likely to be accepted. The best way to do this is to create a issue of type “Feature Request” in GitHub where you describe your plans.
+❤️  Thanks for looking at this, we appreciate your contributions!
 
-Wannabe development aligns its direction with The Gathering/KANDU, prioritizing features that directly benefit and enhance The Gathering.
+Before you start working on a significant code change,
+it’s a good idea to make sure that your approach is likely to be accepted.
+The best way to do this is to create a issue of type “Feature Request”
+in GitHub where you describe your plans.
+
+Wannabe development aligns its direction with The Gathering/KANDU and will
+prioritizing features that directly benefit and enhances The Gathering.
+
+As this project is in a pretty early phase, the rules are fast and loose. All
+efforts to contribute are **much appreciated**, and these guidelines are just in
+place to try to make it as fruitful and constructive as possible.
+
+We are on slack (and sometimes on discord) so feel free to reach out!
 
 ## Repositories
 We maintain two primary repositories: one dedicated to [backend code](https://github.com/gathering/wannabe5-backend) and another to [frontend code](https://github.com/gathering/wannabe5-frontend).
@@ -29,3 +41,10 @@ git remote add upstream https://github.com/gathering/wannabe5-frontend.git
 
 5. Set up your [Development Setup](DEVELOPMENT.md).
 6. Check the GitHub issues for good tasks to get started.
+
+## 📦 Create PRs early
+
+We recommend creating a PR as soon as you have "any" partially working code in
+your branch. This makes it easier for others to notice your work and
+provide them with additional context on what it is and how it (potentially)
+relates to what they are working on.

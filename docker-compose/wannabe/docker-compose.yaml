@@ -1,0 +1,164 @@
+version: "3.8"
+services:
+  database:
+    image: mysql:8
+    env_file:
+      - env/database.env
+    volumes:
+      - database:/var/lib/mysql
+      - ./dbinit/:/docker-entrypoint-initdb.d/
+    networks:
+      default:
+        aliases:
+          - 'database'
+    healthcheck:
+      test: "mysqladmin ping -h localhost -u $$MYSQL_USER --password=$$MYSQL_PASSWORD"
+      timeout: 20s
+      retries: 10
+  redis:
+    image: redis:6.2-alpine
+    networks:
+      default:
+        aliases:
+          - 'redis'
+
+  auth:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-auth:latest
+    env_file:
+      - env/backend.env
+      - env/auth.env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - 'auth'
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.wb5auth.rule=Host(`$WB_DOMAIN`)"
+        - "traefik.http.routers.wb5auth.rule=PathPrefix(`/api/auth`)"
+        - "traefik.http.routers.wb5auth.entrypoints=web"
+        ## Strip route prefix (so app does not have to worry about `/api/auth` part of url)
+        - "traefik.http.middlewares.auth-strip.stripprefix.prefixes=/api/auth"
+        - "traefik.http.routers.wb5auth.middlewares=auth-strip@docker"
+  auth-listener:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-auth:latest
+    env_file:
+      - env/backend.env
+      - env/auth.env
+    command: [sh, -c, 'php artisan wannabe:remote-access:cache-purger']
+    depends_on:
+      auth:
+        condition: service_started
+
+  access:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-access:latest
+    env_file:
+      - env/backend.env
+      - env/access.env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - 'access'
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.wb5access.rule=Host(`$WB_DOMAIN`)"
+        - "traefik.http.routers.wb5access.rule=PathPrefix(`/api/access`)"
+        - "traefik.http.routers.wb5access.entrypoints=web"
+        ## Strip route prefix (so app does not have to worry about `/api/auth` part of url)
+        - "traefik.http.middlewares.access-strip.stripprefix.prefixes=/api/access"
+        - "traefik.http.routers.wb5access.middlewares=access-strip@docker"
+  access-poller:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-access:latest
+    env_file:
+      - env/backend.env
+      - env/access.env
+    command: [sh, -c, 'php artisan gather:attributes']
+    depends_on:
+      access:
+        condition: service_started
+
+  crew:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-crew:latest
+    env_file:
+      - env/backend.env
+      - env/crew.env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - 'crew'
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.wb5crew.rule=Host(`$WB_DOMAIN`)"
+        - "traefik.http.routers.wb5crew.rule=PathPrefix(`/api/crew`)"
+        - "traefik.http.routers.wb5crew.entrypoints=web"
+        ## Strip route prefix (so app does not have to worry about `/api/auth` part of url)
+        - "traefik.http.middlewares.crew-strip.stripprefix.prefixes=/api/crew"
+        - "traefik.http.routers.wb5crew.middlewares=crew-strip@docker"
+  crew-listener:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-crew:latest
+    env_file:
+      - env/backend.env
+      - env/crew.env
+    command: [sh, -c, 'php artisan events:listen']
+    depends_on:
+      crew:
+        condition: service_started
+  crew-profile-listener:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-crew:latest
+    env_file:
+      - env/backend.env
+      - env/crew.env
+    command: [sh, -c, 'php artisan wannabe:remote-profile:cache-purger']
+    depends_on:
+      crew:
+        condition: service_started
+
+  profile:
+    image: ghcr.io/gathering/wannabe5-backend/wannabe5-microservice-profile:latest
+    env_file:
+      - env/backend.env
+      - env/profile.env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+          - 'profile'
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.wb5profile.rule=Host(`$WB_DOMAIN`)"
+        - "traefik.http.routers.wb5profile.rule=PathPrefix(`/api/profile`)"
+        - "traefik.http.routers.wb5profile.entrypoints=web"
+        ## Strip route prefix (so app does not have to worry about `/api/auth` part of url)
+        - "traefik.http.middlewares.profile-strip.stripprefix.prefixes=/api/profile"
+        - "traefik.http.routers.wb5profile.middlewares=profile-strip@docker"
+
+  frontend:
+    image: ghcr.io/gathering/wannabe5-frontend/wannabe5-frontend:latest
+    env_file:
+      - env/frontend.env
+    depends_on:
+      database:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wb5frontend.rule=Host(`$WB_DOMAIN`)"
+      - "traefik.http.routers.wb5frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.wb5frontend.entrypoints=web"
+
+volumes:
+  database:
+
+networks:
+  default:
+    name: proxy
+    external: true
